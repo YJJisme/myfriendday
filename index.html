@@ -489,7 +489,7 @@
                     <div id="message-area" style="white-space: pre-wrap; font-size: 1.2rem; line-height: 1.6;"></div>
                     <div id="extras-container" class="hidden" style="margin-top: 30px;">
                         <div id="trivia-text" class="link-text">💡 冷知識：當人被催促時，也能有好心情？(點擊了解)</div>
-                        <button id="btn-save" style="margin-top: 20px;" data-html2canvas-ignore>📥 收藏這份祝福</button>
+                        <button id="btn-save" style="margin-top: 20px;">📥 收藏這份祝福</button>
                     </div>
                 </div>
             </div>
@@ -561,7 +561,7 @@
         const celebrationDecor = document.getElementById('celebration-decor');
 
         // BGM Element
-        const bgm = new Audio('Birthday Parade.mp3'); // 慶生BGM：請將 Birthday Parade.mp3 放在同目錄下
+        const bgm = new Audio('Birthday Parade.mp3'); // 請將音樂檔案命名為 bgm.mp3 並放在同目錄下
         bgm.loop = true;
         bgm.volume = 0.5;
 
@@ -633,10 +633,16 @@
         setInterval(createShootingStar, 3000);
 
         // Logic Entry Point
+        let isLate = false;
+        
         function init() {
             const now = new Date();
             const quizCompleted = localStorage.getItem('quiz_completed') === 'true';
             
+            // Define end of birthday (Feb 5th 23:59:59)
+            // TARGET_DATE is 2026-02-05 00:00:00
+            const END_OF_BDAY = new Date(TARGET_DATE.getTime() + 24 * 60 * 60 * 1000);
+
             // Apply optional birthday background to reveal phase
             applyRevealBackground();
             
@@ -644,7 +650,14 @@
             setupQuizEnhancements();
 
             // Check if we should skip to result (Test mode or Past Date)
-            if (isTestMode || now >= TARGET_DATE) {
+            if (isTestMode) {
+                showResultPhase();
+            } else if (now >= END_OF_BDAY) {
+                // Late Arrival: Directly show Envelope (Reveal Phase)
+                isLate = true;
+                revealPhase.classList.remove('hidden');
+                revealPhase.classList.add('fade-in');
+            } else if (now >= TARGET_DATE) {
                 showResultPhase();
             } else if (quizCompleted) {
                 // If quiz done but still waiting
@@ -910,7 +923,17 @@ END:VCALENDAR`;
         });
 
         function typeWriter() {
-            const text = "自 2024 匆匆一瞥到現在也好久了，\n祝你生日快樂呀。";
+            let text = "自2024年匆匆一瞥到現在也一段時間了，\n祝你生日快樂呀！至少今天的你不孤單！🎂";
+            
+            if (isLate) {
+                const now = new Date();
+                // Calculate difference from TARGET_DATE (Feb 5 00:00)
+                const diff = now - TARGET_DATE; 
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                text = `雖然晚了${days}天${hours}小時，但還是祝你生日快樂，天天快樂！`;
+            }
+
             let i = 0;
             const speed = 100;
             
@@ -962,7 +985,27 @@ END:VCALENDAR`;
             const captureElement = document.getElementById('capture-area');
             html2canvas(captureElement, {
                 backgroundColor: "#000000",
-                scale: 2
+                scale: 2,
+                useCORS: true,
+                onclone: (clonedDoc) => {
+                    const clonedBtn = clonedDoc.getElementById('btn-save');
+                    if (clonedBtn) clonedBtn.style.display = 'none';
+                    
+                    const clonedTrivia = clonedDoc.getElementById('trivia-text');
+                    const originalTrivia = document.getElementById('trivia-text');
+                    if (clonedTrivia && originalTrivia) {
+                        // Ensure we capture the current state of the text (clicked or not)
+                        clonedTrivia.innerHTML = originalTrivia.innerHTML;
+                        // Remove animation classes that might affect opacity
+                        clonedTrivia.classList.remove('fade-in', 'fade-out');
+                        // Force visibility
+                        clonedTrivia.style.color = '#FFFFFF';
+                        clonedTrivia.style.display = 'block';
+                        clonedTrivia.style.visibility = 'visible';
+                        clonedTrivia.style.opacity = '1';
+                        clonedTrivia.style.textDecoration = 'none';
+                    }
+                }
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'birthday-wish.png';
