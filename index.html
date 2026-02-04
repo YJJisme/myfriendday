@@ -263,6 +263,21 @@
             font-size: 1.5rem;
             margin-bottom: 20px;
         }
+        .page-title {
+            font-size: 1.6rem;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        #result-metrics {
+            font-size: 0.95rem;
+            color: #ccc;
+            margin-top: 8px;
+        }
+        .fine-print {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 10px;
+        }
 
         /* Extras */
         #extras-container {
@@ -369,6 +384,9 @@
         <!-- Phase 1: Quiz -->
         <div id="quiz-phase" class="center-screen hidden">
             <div class="quiz-container fade-in">
+                <div class="page-title">邊緣人鑑定中心</div>
+                <div id="subject-id" class="fine-print"></div>
+                <div class="fine-print">資料僅用於演算法模擬</div>
                 <div class="question-block">
                     <div class="question-title">Q1：關於跨年，你的通常狀態是？</div>
                     <div class="options">
@@ -423,6 +441,7 @@
         <div id="result-phase" class="center-screen hidden">
             <div class="fade-in">
                 <div class="result-title">鑑定結果：您的邊緣人指數為 0%</div>
+                <div id="result-metrics"></div>
                 <button id="btn-reveal-details">查看詳細分析報告</button>
             </div>
         </div>
@@ -488,6 +507,8 @@
         const logPhase = document.getElementById('log-phase');
         const logArea = document.getElementById('log-area');
         const analysisMetrics = document.getElementById('analysis-metrics');
+        const subjectIdEl = document.getElementById('subject-id');
+        const resultMetricsEl = document.getElementById('result-metrics');
 
         // BGM Element
         const bgm = new Audio('bgm.mp3'); // 請將音樂檔案命名為 bgm.mp3 並放在同目錄下
@@ -568,6 +589,9 @@
             
             // Apply optional birthday background to reveal phase
             applyRevealBackground();
+            
+            subjectIdEl.textContent = `受試者編號：BIDX-${Date.now().toString().slice(-6)}`;
+            setupQuizEnhancements();
 
             // Check if we should skip to result (Test mode or Past Date)
             if (isTestMode || now >= TARGET_DATE) {
@@ -602,7 +626,52 @@
                 quizPhase.classList.add('hidden');
                 showLogPhase();
             }, 1500);
+            
+            const answers = {
+                q1: q1.value,
+                q2: q2.value,
+                q3: q3.value
+            };
+            const t = (Date.now() - quizStart) / 1000;
+            const totalChanges = changeCounts.q1 + changeCounts.q2 + changeCounts.q3;
+            const social = answers.q2 === 'A' ? 0.8 : answers.q2 === 'B' ? 0.5 : 0.2;
+            const solitude = answers.q3 === 'A' ? 0.1 : answers.q3 === 'B' ? 0.4 : 0.8;
+            const festival = answers.q1 === 'A' ? '人群偏好' : answers.q1 === 'B' ? '熟友偏好' : '靜態偏好';
+            let credibility = 0.8;
+            credibility += t > 10 ? 0.05 : -0.15;
+            credibility += totalChanges >= 2 ? 0.05 : -0.05;
+            credibility = Math.max(0.6, Math.min(0.95, credibility));
+            const checksum = makeChecksum(JSON.stringify({ answers, t, totalChanges, subject: subjectIdEl.textContent }));
+            const summary = {
+                social,
+                solitude,
+                festival,
+                credibility,
+                checksum
+            };
+            localStorage.setItem('survey_data', JSON.stringify(summary));
         });
+        
+        let quizStart = Date.now();
+        const changeCounts = { q1: 0, q2: 0, q3: 0 };
+        
+        function setupQuizEnhancements() {
+            shuffleOptions('q1');
+            shuffleOptions('q2');
+            shuffleOptions('q3');
+            document.querySelectorAll('input[name="q1"]').forEach(el => el.addEventListener('change', () => changeCounts.q1++));
+            document.querySelectorAll('input[name="q2"]').forEach(el => el.addEventListener('change', () => changeCounts.q2++));
+            document.querySelectorAll('input[name="q3"]').forEach(el => el.addEventListener('change', () => changeCounts.q3++));
+            quizStart = Date.now();
+        }
+        
+        function shuffleOptions(name) {
+            const labels = Array.from(document.querySelectorAll(`input[name="${name}"]`)).map(i => i.parentElement);
+            const parent = labels[0]?.parentElement;
+            if (!parent) return;
+            const shuffled = labels.sort(() => Math.random() - 0.5);
+            shuffled.forEach(l => parent.appendChild(l));
+        }
 
         function showLogPhase() {
             logPhase.classList.remove('hidden');
@@ -741,6 +810,15 @@ END:VCALENDAR`;
         function showResultPhase() {
             resultPhase.classList.remove('hidden');
             resultPhase.classList.add('fade-in');
+            const raw = localStorage.getItem('survey_data');
+            if (raw) {
+                const s = JSON.parse(raw);
+                const cred = Math.round(s.credibility * 100);
+                resultMetricsEl.textContent = `可信度：${cred}% | 模型 v0.9.3 | 校驗碼：${s.checksum}`;
+            } else {
+                const cred = Math.round((0.8 + Math.random() * 0.1) * 100);
+                resultMetricsEl.textContent = `可信度：${cred}% | 模型 v0.9.3 | 校驗碼：${makeChecksum(String(Date.now()))}`;
+            }
         }
 
         btnRevealDetails.addEventListener('click', () => {
@@ -788,6 +866,15 @@ END:VCALENDAR`;
                 }
             }
             type();
+        }
+        
+        function makeChecksum(s) {
+            let h = 0;
+            for (let i = 0; i < s.length; i++) {
+                h = (h << 5) - h + s.charCodeAt(i);
+                h |= 0;
+            }
+            return (h >>> 0).toString(16).padStart(8, '0');
         }
 
         // Extras Logic

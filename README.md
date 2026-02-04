@@ -69,6 +69,10 @@ graph TD
         - 方式 A：在專案根目錄放入 `birthday-bg.jpg`（與 `index.html` 同層級），頁面會自動套用到「揭曉階段」。
         - 方式 B：使用 URL 參數指定圖片，例如：`index.html?bg=your-image.jpg` 或提供完整連結 `index.html?bg=https://example.com/pic.jpg`。
     *   文字仍維持白色，並加上一層半透明遮罩以確保可讀性。
+*   **可信度與校驗機制**：
+    *   量測作答時間與更換選項次數，生成「可信度」並在結果頁顯示。
+    *   以受試者編號、答案與作答時間生成「校驗碼」（簡易雜湊），提高真實感。
+    *   題目選項在載入時會隨機排序，降低固定模式的疑慮。
 
 ---
 *Created for a special moment in 2026.*
