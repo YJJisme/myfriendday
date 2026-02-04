@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>邊緣人鑑定中心</title>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* CSS Reset & Basic Style */
+        :root {
+            --bg-color: #000000;
+            --text-color: #FFFFFF;
+            --font-family: 'Courier Prime', 'Courier New', Courier, monospace, 'Microsoft JhengHei', sans-serif;
+            --accent-color: #FFFFFF;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            overflow-x: hidden; /* Prevent horizontal scroll */
+            overflow-y: auto;   /* Allow vertical scroll */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        /* Starfield Background */
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0;
+            animation: twinkle var(--duration) ease-in-out infinite;
+            animation-delay: var(--delay);
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: var(--opacity); transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.5); }
+        }
+
+        /* Shooting Star */
+        .shooting-star {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1), 0 0 0 8px rgba(255, 255, 255, 0.1), 0 0 20px rgba(255, 255, 255, 1);
+            animation: shoot 3s linear infinite;
+            opacity: 0;
+        }
+
+        .shooting-star::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 300px;
+            height: 1px;
+            background: linear-gradient(90deg, #fff, transparent);
+        }
+
+        @keyframes shoot {
+            0% {
+                transform: rotate(315deg) translateX(0);
+                opacity: 1;
+            }
+            70% {
+                opacity: 1;
+            }
+            100% {
+                transform: rotate(315deg) translateX(-1000px);
+                opacity: 0;
+            }
+        }
+
+        /* Layout Utilities */
+        .center-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            min-height: 100vh; /* Changed from fixed height to min-height */
+            text-align: center;
+            padding: 40px 20px; /* Added more padding */
+            box-sizing: border-box;
+            position: relative; /* Changed from absolute to relative */
+        }
+
+        /* Ensure full screen absolute positioning for specific overlays if needed */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .fade-in {
+            animation: fadeIn 1.5s ease-in-out forwards;
+            opacity: 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fade-out {
+            animation: fadeOut 1.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        /* Portrait Warning */
+        #portrait-warning {
+            z-index: 9999;
+            background-color: #000;
+            display: none;
+        }
+
+        @media screen and (orientation: portrait) {
+            #portrait-warning {
+                display: flex;
+            }
+            #main-content {
+                display: none;
+            }
+        }
+
+        /* Quiz Styles */
+        .quiz-container {
+            width: 100%;
+            max-width: 600px;
+            text-align: left;
+        }
+
+        .question-block {
+            margin-bottom: 30px;
+        }
+
+        .question-title {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .options label {
+            display: block;
+            margin: 10px 0;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .options label:hover {
+            opacity: 1;
+        }
+
+        input[type="radio"] {
+            margin-right: 10px;
+            accent-color: #FFF;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            width: 80%;
+            max-width: 400px;
+            height: 2px;
+            background: #333;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #FFF;
+            transition: width 0.1s linear;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        .pulse-bar {
+            animation: glow 2s ease-in-out infinite;
+        }
+        @keyframes glow {
+            0% { box-shadow: 0 0 6px rgba(255,255,255,0.4); }
+            50% { box-shadow: 0 0 16px rgba(255,255,255,0.9); }
+            100% { box-shadow: 0 0 6px rgba(255,255,255,0.4); }
+        }
+
+        /* Buttons */
+        button {
+            background: transparent;
+            border: 1px solid #FFF;
+            color: #FFF;
+            padding: 12px 24px;
+            margin-top: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: #FFF;
+            color: #000;
+        }
+
+        /* Envelope */
+        #envelope-svg {
+            width: 100px;
+            height: 60px;
+            cursor: pointer;
+            stroke: #FFF;
+            stroke-width: 2;
+            fill: none;
+            transition: transform 0.3s;
+        }
+        
+        #envelope-svg:hover {
+            transform: scale(1.1);
+        }
+
+        /* Message Area */
+        #message-area {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 1.2rem;
+            max-width: 80%;
+            margin-bottom: 20px;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        /* Extras */
+        #extras-container {
+            margin-top: 40px;
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .link-text {
+            text-decoration: underline;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #CCC;
+            transition: color 0.3s;
+        }
+
+        .link-text:hover {
+            color: #FFF;
+        }
+
+        #capture-area {
+            padding: 20px;
+            background: #000; /* Ensure bg is captured */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        
+        /* Reveal Background */
+        #reveal-phase.has-bg {
+            background-size: cover;
+            background-position: center;
+        }
+        #reveal-phase.has-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 0;
+        }
+        #reveal-phase.has-bg > * {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Log Phase */
+        #log-phase {
+            background: #000;
+            color: #00ff9c;
+        }
+        .log-container {
+            width: 90%;
+            max-width: 800px;
+            height: 240px;
+            border: 1px solid #00ff9c;
+            padding: 16px;
+            box-sizing: border-box;
+            overflow: hidden;
+            font-family: 'Courier Prime', monospace;
+            font-size: 0.9rem;
+        }
+        #log-area {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+        
+        /* Metrics */
+        #analysis-metrics {
+            font-size: 0.95rem;
+            color: #ccc;
+        }
+        
+        /* Footer */
+        #app-footer {
+            position: fixed;
+            bottom: 6px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #888;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Portrait Warning -->
+    <div id="portrait-warning" class="center-screen">
+        <p>請旋轉手機以啟用分析</p>
+    </div>
+    
+    <!-- Background Stars Container -->
+    <div id="stars-container" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:-1;"></div>
+
+    <!-- Main Content -->
+    <div id="main-content" class="center-screen">
+        
+        <!-- Phase 1: Quiz -->
+        <div id="quiz-phase" class="center-screen hidden">
+            <div class="quiz-container fade-in">
+                <div class="question-block">
+                    <div class="question-title">Q1：關於跨年，你的通常狀態是？</div>
+                    <div class="options">
+                        <label><input type="radio" name="q1" value="A"> (A) 跟一大群朋友去人擠人看煙火。</label>
+                        <label><input type="radio" name="q1" value="B"> (B) 跟幾個老朋友聚餐。</label>
+                        <label><input type="radio" name="q1" value="C"> (C) 沒特別感覺，通常在睡覺中度過。</label>
+                    </div>
+                </div>
+                <div class="question-block">
+                    <div class="question-title">Q2：社交軟體中的真心好友數是否超過 10 個？</div>
+                    <div class="options">
+                        <label><input type="radio" name="q2" value="A"> (A) 超過，互動很頻繁。</label>
+                        <label><input type="radio" name="q2" value="B"> (B) 差不多 10 個左右。</label>
+                        <label><input type="radio" name="q2" value="C"> (C) 10 個？那是天文數字吧。</label>
+                    </div>
+                </div>
+                <div class="question-block">
+                    <div class="question-title">Q3：上次與朋友主動聊天（非公事）是否已超過 24 小時？</div>
+                    <div class="options">
+                        <label><input type="radio" name="q3" value="A"> (A) 剛聊完，訊息沒斷過。</label>
+                        <label><input type="radio" name="q3" value="B"> (B) 24 小時內有過簡短交談。</label>
+                        <label><input type="radio" name="q3" value="C"> (C) 絕對超過 24 小時了。</label>
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <button id="btn-submit-quiz">提交分析</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 2: Analysis / Waiting -->
+        <div id="analysis-phase" class="center-screen hidden">
+            <div class="fade-in" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <p id="analysis-status">> 狀態：正在進行最後數據封裝與加密...</p>
+                <div class="progress-container">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+                <p id="analysis-countdown" class="pulse">> 預計分析完成剩餘時間：計算中...</p>
+                <p id="analysis-metrics" class="pulse">> 環境熵值：初始化中...</p>
+                <button id="btn-calendar" class="hidden">🔔 將解鎖時間加入日曆</button>
+            </div>
+        </div>
+
+        <!-- Hacker Log Phase -->
+        <div id="log-phase" class="center-screen hidden">
+            <div class="log-container">
+                <pre id="log-area"></pre>
+            </div>
+        </div>
+
+        <!-- Phase 3: Result (The Reveal part 1) -->
+        <div id="result-phase" class="center-screen hidden">
+            <div class="fade-in">
+                <div class="result-title">鑑定結果：您的邊緣人指數為 0%</div>
+                <button id="btn-reveal-details">查看詳細分析報告</button>
+            </div>
+        </div>
+
+        <!-- Phase 4: Envelope & Message (The Reveal part 2) -->
+        <div id="reveal-phase" class="center-screen hidden">
+            <div id="envelope-container" class="center-screen fade-in">
+                <svg id="envelope-svg" viewBox="0 0 100 60">
+                    <rect x="2" y="2" width="96" height="56" rx="2" />
+                    <polyline points="2,2 50,35 98,2" />
+                </svg>
+            </div>
+            <div id="message-container" class="hidden center-screen">
+                <div id="capture-area">
+                    <div id="message-area" style="white-space: pre-wrap; font-size: 1.2rem; line-height: 1.6;"></div>
+                    <div id="extras-container" class="hidden" style="margin-top: 30px;">
+                        <div id="trivia-text" class="link-text">💡 冷知識：當人被催促時，也能有好心情？(點擊了解)</div>
+                        <button id="btn-save" style="margin-top: 20px;" data-html2canvas-ignore>📥 收藏這份祝福</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <div id="app-footer">v1.0.3 · Temporal Computing Group © 2026</div>
+
+    <script>
+        // Security
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.addEventListener('keydown', event => {
+            if (event.ctrlKey && (event.key === 's' || event.key === 'S' || event.key === 'u' || event.key === 'U')) {
+                event.preventDefault();
+            }
+        });
+
+        // Config
+        const TARGET_DATE = new Date('2026-02-05T00:00:00');
+        const urlParams = new URLSearchParams(window.location.search);
+        const isTestMode = urlParams.get('test') === 'true';
+        const bgParam = urlParams.get('bg'); // 可用 URL 設定慶生背景，如 ?bg=your.jpg
+
+        // Elements
+        const quizPhase = document.getElementById('quiz-phase');
+        const analysisPhase = document.getElementById('analysis-phase');
+        const resultPhase = document.getElementById('result-phase');
+        const revealPhase = document.getElementById('reveal-phase');
+        
+        const btnSubmitQuiz = document.getElementById('btn-submit-quiz');
+        const progressBar = document.getElementById('progress-bar');
+        const analysisStatus = document.getElementById('analysis-status');
+        const analysisCountdown = document.getElementById('analysis-countdown');
+        const btnCalendar = document.getElementById('btn-calendar');
+        
+        const btnRevealDetails = document.getElementById('btn-reveal-details');
+        const envelopeContainer = document.getElementById('envelope-container');
+        const envelopeSvg = document.getElementById('envelope-svg');
+        const messageContainer = document.getElementById('message-container');
+        const messageArea = document.getElementById('message-area');
+        const extrasContainer = document.getElementById('extras-container');
+        const triviaText = document.getElementById('trivia-text');
+        const btnSave = document.getElementById('btn-save');
+        const logPhase = document.getElementById('log-phase');
+        const logArea = document.getElementById('log-area');
+        const analysisMetrics = document.getElementById('analysis-metrics');
+
+        // BGM Element
+        const bgm = new Audio('bgm.mp3'); // 請將音樂檔案命名為 bgm.mp3 並放在同目錄下
+        bgm.loop = true;
+        bgm.volume = 0.5;
+
+        // Sound Effects (Web Audio API)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTypingSound() {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine'; // simple click
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+            
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // Starfield
+        function createStars() {
+            const container = document.getElementById('stars-container');
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                const size = Math.random() * 2 + 1;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.setProperty('--duration', `${Math.random() * 3 + 2}s`);
+                star.style.setProperty('--delay', `${Math.random() * 5}s`);
+                star.style.setProperty('--opacity', Math.random() * 0.7 + 0.3);
+                container.appendChild(star);
+            }
+        }
+        createStars();
+
+        // Shooting Stars
+        function createShootingStar() {
+            const container = document.getElementById('stars-container');
+            const star = document.createElement('div');
+            star.classList.add('shooting-star');
+            
+            // Random start position
+            star.style.top = `${Math.random() * 50}%`;
+            star.style.left = `${Math.random() * 100}%`;
+            
+            // Random duration and delay
+            star.style.animationDuration = `${Math.random() * 2 + 1}s`;
+            
+            container.appendChild(star);
+            
+            // Remove after animation
+            setTimeout(() => {
+                star.remove();
+            }, 4000);
+        }
+        
+        // Spawn shooting stars periodically
+        setInterval(createShootingStar, 3000);
+
+        // Logic Entry Point
+        function init() {
+            const now = new Date();
+            const quizCompleted = localStorage.getItem('quiz_completed') === 'true';
+            
+            // Apply optional birthday background to reveal phase
+            applyRevealBackground();
+
+            // Check if we should skip to result (Test mode or Past Date)
+            if (isTestMode || now >= TARGET_DATE) {
+                showResultPhase();
+            } else if (quizCompleted) {
+                // If quiz done but still waiting
+                showAnalysisPhase();
+            } else {
+                // Start with Quiz
+                quizPhase.classList.remove('hidden');
+                quizPhase.classList.add('fade-in');
+            }
+        }
+
+        // Quiz Logic
+        btnSubmitQuiz.addEventListener('click', () => {
+            // Validate (optional, but good UX)
+            const q1 = document.querySelector('input[name="q1"]:checked');
+            const q2 = document.querySelector('input[name="q2"]:checked');
+            const q3 = document.querySelector('input[name="q3"]:checked');
+
+            if (!q1 || !q2 || !q3) {
+                alert("請完成所有題目以進行精確分析。");
+                return;
+            }
+
+            localStorage.setItem('quiz_completed', 'true');
+            
+            // Transition to Analysis
+            quizPhase.classList.add('fade-out');
+            setTimeout(() => {
+                quizPhase.classList.add('hidden');
+                showLogPhase();
+            }, 1500);
+        });
+
+        function showLogPhase() {
+            logPhase.classList.remove('hidden');
+            logPhase.classList.add('fade-in');
+            logArea.textContent = '';
+            let i = 0;
+            const lines = [
+                '> 連線資料湖節點…完成',
+                '> 提取分片 shard-17 …完成',
+                '> 提取分片 shard-23 …完成',
+                '> 建立臨時索引…完成',
+                '> 進行特徵哈希…完成',
+                '> 合併向量簇…完成',
+                '> 熵值採樣…完成',
+                '> 生成零知識摘要…完成',
+                '> 最終加密封包…完成'
+            ];
+            const timer = setInterval(() => {
+                const t = new Date().toLocaleTimeString();
+                const s = lines[i % lines.length];
+                logArea.textContent += `[${t}] ${s}\n`;
+                logArea.scrollTop = logArea.scrollHeight;
+                i++;
+            }, 120);
+            setTimeout(() => {
+                clearInterval(timer);
+                logPhase.classList.add('fade-out');
+                setTimeout(() => {
+                    logPhase.classList.add('hidden');
+                    showAnalysisPhase();
+                }, 800);
+            }, 3000);
+        }
+
+        // Analysis Phase Logic
+        function showAnalysisPhase() {
+            analysisPhase.classList.remove('hidden');
+            
+            // Animate Progress Bar to 99.9%
+            setTimeout(() => {
+                progressBar.style.width = '99.9%';
+                progressBar.classList.add('pulse-bar');
+            }, 100);
+
+            // Start Countdown
+            const updateTimer = () => {
+                const now = new Date();
+                
+                // If time reached while on this screen
+                if (now >= TARGET_DATE) {
+                    progressBar.style.width = '100%';
+                    analysisStatus.textContent = "> 狀態：分析完成。";
+                    analysisCountdown.textContent = "> 準備解鎖報告...";
+                    
+                    setTimeout(() => {
+                        analysisPhase.classList.add('fade-out');
+                        setTimeout(() => {
+                            analysisPhase.classList.add('hidden');
+                            showResultPhase();
+                        }, 1500);
+                    }, 2000);
+                    return;
+                }
+
+                const diff = TARGET_DATE - now;
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                analysisCountdown.textContent = `> 預計分析完成剩餘時間：${days}天 ${hours}時 ${minutes}分 ${seconds}秒`;
+                requestAnimationFrame(updateTimer);
+            };
+            updateTimer();
+
+            // Show Calendar Button after a short delay
+            setTimeout(() => {
+                btnCalendar.classList.remove('hidden');
+                btnCalendar.classList.add('fade-in');
+            }, 4000);
+            
+            let e = 0.62;
+            const entropyTimer = setInterval(() => {
+                const delta = (Math.random() - 0.5) * 0.08;
+                e = Math.max(0.01, Math.min(0.99, e + delta));
+                const n = (Math.random() * 0.2 + 0.1).toFixed(2);
+                analysisMetrics.textContent = `> 環境熵值：${e.toFixed(2)} | 噪聲比：${n}`;
+                if (analysisStatus.textContent.includes('分析完成')) {
+                    clearInterval(entropyTimer);
+                }
+            }, 500);
+        }
+
+        // Optional Background for Reveal Phase
+        function applyRevealBackground() {
+            const img = bgParam ? bgParam : '螢幕擷取畫面 2026-02-04 102652.png';
+            const fallback = 'birthday-bg.jpg';
+            if (img) {
+                revealPhase.style.backgroundImage = `url('${img}')`;
+                revealPhase.classList.add('has-bg');
+            }
+            // Optional fallback if desired image未命中（保留原本預設檔名）
+            if (!revealPhase.style.backgroundImage) {
+                revealPhase.style.backgroundImage = `url('${fallback}')`;
+                revealPhase.classList.add('has-bg');
+            }
+        }
+
+        // Calendar Logic
+        btnCalendar.addEventListener('click', () => {
+            const icsContent = 
+`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Birthday Surprise//B-Index//EN
+BEGIN:VEVENT
+UID:uid1@example.com
+DTSTAMP:20240101T000000Z
+DTSTART:20260204T160000Z
+DTEND:20260204T170000Z
+SUMMARY:邊緣人鑑定報告解鎖
+DESCRIPTION:請回到網頁查看您的分析結果。
+END:VEVENT
+END:VCALENDAR`;
+            // Note: DTSTART is UTC. 2026-02-05 00:00 Taiwan is 2026-02-04 16:00 UTC.
+            
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', 'surprise_unlock.ics');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Result Phase Logic
+        function showResultPhase() {
+            resultPhase.classList.remove('hidden');
+            resultPhase.classList.add('fade-in');
+        }
+
+        btnRevealDetails.addEventListener('click', () => {
+            // Try to play BGM
+            bgm.play().catch(e => console.log("BGM not found or blocked: ", e));
+
+            resultPhase.classList.add('fade-out');
+            setTimeout(() => {
+                resultPhase.classList.add('hidden');
+                revealPhase.classList.remove('hidden');
+                // Envelope is visible by default in revealPhase structure
+            }, 1500);
+        });
+
+        // Envelope Click Logic
+        envelopeSvg.addEventListener('click', () => {
+            envelopeContainer.classList.add('fade-out');
+            setTimeout(() => {
+                envelopeContainer.classList.add('hidden');
+                messageContainer.classList.remove('hidden');
+                messageContainer.classList.add('fade-in');
+                typeWriter();
+            }, 1000);
+        });
+
+        function typeWriter() {
+            const text = "自 2024 匆匆一瞥到現在也好久了，\n祝你生日快樂呀。";
+            let i = 0;
+            const speed = 100;
+            
+            function type() {
+                if (i < text.length) {
+                    messageArea.textContent += text.charAt(i);
+                    // Play sound for non-space characters
+                    if (text.charAt(i).trim() !== '') {
+                        playTypingSound();
+                    }
+                    i++;
+                    setTimeout(type, speed);
+                } else {
+                    // Typewriter finished
+                    setTimeout(() => {
+                        extrasContainer.classList.remove('hidden');
+                    }, 500);
+                }
+            }
+            type();
+        }
+
+        // Extras Logic
+        let triviaClicked = false;
+        triviaText.addEventListener('click', () => {
+            if (!triviaClicked) {
+                triviaText.classList.add('fade-out');
+                setTimeout(() => {
+                    triviaText.classList.remove('fade-out');
+                    triviaText.classList.add('fade-in');
+                    triviaText.innerHTML = "因為被催促時會說：我很快了（我很快樂）。<br>哈哈不好笑，祝你有快樂的一天。";
+                    triviaText.style.textDecoration = 'none';
+                    triviaText.style.cursor = 'default';
+                }, 1500);
+                triviaClicked = true;
+            }
+        });
+
+        btnSave.addEventListener('click', () => {
+            const captureElement = document.getElementById('capture-area');
+            html2canvas(captureElement, {
+                backgroundColor: "#000000",
+                scale: 2
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'birthday-wish.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        });
+
+        // Initialize
+        init();
+
+    </script>
+</body>
+</html>
